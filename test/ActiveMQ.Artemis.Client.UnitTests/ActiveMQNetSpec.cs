@@ -30,6 +30,13 @@ namespace ActiveMQ.Artemis.Client.UnitTests
             var connectionFactory = CreateConnectionFactory();
             return connectionFactory.CreateAsync(endpoint);
         }
+        
+        protected Task<IConnection> CreateConnectionWithoutAutomaticRecovery(Endpoint endpoint)
+        {
+            var connectionFactory = CreateConnectionFactory();
+            connectionFactory.AutomaticRecoveryEnabled = false;
+            return connectionFactory.CreateAsync(endpoint);
+        }
 
         protected Task<IConnection> CreateConnection(IEnumerable<Endpoint> endpoint)
         {

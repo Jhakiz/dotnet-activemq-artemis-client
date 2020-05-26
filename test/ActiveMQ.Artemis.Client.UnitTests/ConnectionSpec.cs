@@ -1,5 +1,7 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
+using ActiveMQ.Artemis.Client.Exceptions;
 using ActiveMQ.Artemis.Client.UnitTests.Utils;
 using Amqp.Handler;
 using Xunit;
@@ -40,6 +42,69 @@ namespace ActiveMQ.Artemis.Client.UnitTests
 
             Assert.True(connectionOpened.WaitOne());
             Assert.True(connectionClosed.WaitOne());
+        }
+
+        [Fact]
+        public async Task Throws_on_attempt_to_create_producer_using_disposed_connection()
+        {
+            using var host = CreateOpenedContainerHost();
+
+            var connection = await CreateConnection(host.Endpoint);
+            await connection.DisposeAsync();
+
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => connection.CreateProducerAsync("a1", AddressRoutingType.Anycast));
+        }
+
+        [Fact]
+        public async Task Throws_on_attempt_to_create_anonymous_producer_using_disposed_connection()
+        {
+            using var host = CreateOpenedContainerHost();
+
+            var connection = await CreateConnection(host.Endpoint);
+            await connection.DisposeAsync();
+
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => connection.CreateAnonymousProducer());
+        }
+
+        [Fact]
+        public async Task Throws_on_attempt_to_create_consumer_using_disposed_connection()
+        {
+            using var host = CreateOpenedContainerHost();
+
+            var connection = await CreateConnection(host.Endpoint);
+            await connection.DisposeAsync();
+
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => connection.CreateConsumerAsync("a1", QueueRoutingType.Anycast));
+        }
+
+        [Fact]
+        public async Task Throws_on_attempt_to_create_producer_using_closed_connection()
+        {
+            using var host = CreateOpenedContainerHost();
+            var connection = await CreateConnectionWithoutAutomaticRecovery(host.Endpoint);
+            await DisposeHostAndWaitUntilConnectionNotified(host, connection);
+
+            await Assert.ThrowsAsync<ConnectionClosedException>(() => connection.CreateProducerAsync("a1", AddressRoutingType.Anycast));
+        }
+        
+        [Fact]
+        public async Task Throws_on_attempt_to_create_anonymous_producer_using_closed_connection()
+        {
+            using var host = CreateOpenedContainerHost();
+            var connection = await CreateConnectionWithoutAutomaticRecovery(host.Endpoint);
+            await DisposeHostAndWaitUntilConnectionNotified(host, connection);
+
+            await Assert.ThrowsAsync<ConnectionClosedException>(() => connection.CreateAnonymousProducer());
+        }
+        
+        [Fact]
+        public async Task Throws_on_attempt_to_create_consumer_using_closed_connection()
+        {
+            using var host = CreateOpenedContainerHost();
+            var connection = await CreateConnectionWithoutAutomaticRecovery(host.Endpoint);
+            await DisposeHostAndWaitUntilConnectionNotified(host, connection);
+
+            await Assert.ThrowsAsync<ConnectionClosedException>(() => connection.CreateConsumerAsync("a1", QueueRoutingType.Anycast));
         }
     }
 }
