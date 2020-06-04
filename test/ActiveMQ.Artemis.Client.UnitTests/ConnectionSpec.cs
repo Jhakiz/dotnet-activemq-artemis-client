@@ -52,7 +52,7 @@ namespace ActiveMQ.Artemis.Client.UnitTests
             var connection = await CreateConnection(host.Endpoint);
             await connection.DisposeAsync();
 
-            await Assert.ThrowsAsync<ObjectDisposedException>(() => connection.CreateProducerAsync("a1", AddressRoutingType.Anycast));
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => connection.CreateProducerAsync("a1", RoutingType.Anycast));
         }
 
         [Fact]
@@ -74,7 +74,18 @@ namespace ActiveMQ.Artemis.Client.UnitTests
             var connection = await CreateConnection(host.Endpoint);
             await connection.DisposeAsync();
 
-            await Assert.ThrowsAsync<ObjectDisposedException>(() => connection.CreateConsumerAsync("a1", QueueRoutingType.Anycast));
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => connection.CreateConsumerAsync("a1", RoutingType.Anycast));
+        }
+
+        [Fact]
+        public async Task Throws_on_attempt_to_create_topology_manager_using_disposed_connection()
+        {
+            using var host = CreateOpenedContainerHost();
+
+            var connection = await CreateConnection(host.Endpoint);
+            await connection.DisposeAsync();
+
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => connection.CreateTopologyManager());            
         }
 
         [Fact]
@@ -84,7 +95,7 @@ namespace ActiveMQ.Artemis.Client.UnitTests
             var connection = await CreateConnectionWithoutAutomaticRecovery(host.Endpoint);
             await DisposeHostAndWaitUntilConnectionNotified(host, connection);
 
-            await Assert.ThrowsAsync<ConnectionClosedException>(() => connection.CreateProducerAsync("a1", AddressRoutingType.Anycast));
+            await Assert.ThrowsAsync<ConnectionClosedException>(() => connection.CreateProducerAsync("a1", RoutingType.Anycast));
         }
         
         [Fact]
@@ -104,7 +115,17 @@ namespace ActiveMQ.Artemis.Client.UnitTests
             var connection = await CreateConnectionWithoutAutomaticRecovery(host.Endpoint);
             await DisposeHostAndWaitUntilConnectionNotified(host, connection);
 
-            await Assert.ThrowsAsync<ConnectionClosedException>(() => connection.CreateConsumerAsync("a1", QueueRoutingType.Anycast));
+            await Assert.ThrowsAsync<ConnectionClosedException>(() => connection.CreateConsumerAsync("a1", RoutingType.Anycast));
+        }
+        
+        [Fact]
+        public async Task Throws_on_attempt_to_create_topology_manager_using_closed_connection()
+        {
+            using var host = CreateOpenedContainerHost();
+            var connection = await CreateConnectionWithoutAutomaticRecovery(host.Endpoint);
+            await DisposeHostAndWaitUntilConnectionNotified(host, connection);
+
+            await Assert.ThrowsAsync<ConnectionClosedException>(() => connection.CreateTopologyManager());
         }
     }
 }

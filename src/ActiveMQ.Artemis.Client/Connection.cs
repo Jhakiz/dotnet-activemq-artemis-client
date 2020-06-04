@@ -37,6 +37,8 @@ namespace ActiveMQ.Artemis.Client
 
         public async Task<ITopologyManager> CreateTopologyManager(CancellationToken cancellationToken = default)
         {
+            CheckState();
+            
             try
             {
                 var session = await CreateSession(cancellationToken).ConfigureAwait(false);
