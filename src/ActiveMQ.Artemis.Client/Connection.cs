@@ -101,7 +101,7 @@ namespace ActiveMQ.Artemis.Client
 
             if (_closed)
             {
-                throw new ConnectionClosedException(_error?.Description ?? "The Connection was closed", _error?.Condition);
+                throw new ConnectionClosedException(_error?.Description ?? "The Connection was closed.", _error?.Condition);
             }
         }
 

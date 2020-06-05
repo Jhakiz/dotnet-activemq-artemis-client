@@ -108,5 +108,7 @@ namespace ActiveMQ.Artemis.Client.UnitTests
         }
 
         protected static TimeSpan ShortTimeout = TimeSpan.FromMilliseconds(100);
+        
+        protected static CancellationToken CancellationToken => new CancellationTokenSource(Timeout).Token;
     }
 }
