@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using ActiveMQ.Artemis.Client.Exceptions;
 using ActiveMQ.Artemis.Client.Transactions;
@@ -21,6 +22,7 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
             while (true)
             {
                 CheckClosed();
+                
                 try
                 {
                     await _producer.SendAsync(address, routingType, message, transaction, cancellationToken).ConfigureAwait(false);
@@ -40,6 +42,7 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
             while (true)
             {
                 CheckClosed();
+                
                 try
                 {
                     _producer.Send(address, routingType, message, cancellationToken);

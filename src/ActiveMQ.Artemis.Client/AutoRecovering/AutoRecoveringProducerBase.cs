@@ -11,6 +11,7 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
     {
         protected readonly ILogger Logger;
         private readonly AsyncManualResetEvent _manualResetEvent = new AsyncManualResetEvent(true);
+        private bool _closed;
         private Exception _failureCause;
 
         protected AutoRecoveringProducerBase(ILoggerFactory loggerFactory)
@@ -36,6 +37,7 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
 
         public async Task RecoverAsync(IConnection connection, CancellationToken cancellationToken)
         {
+            await DisposeUnderlyingProducerSafe().ConfigureAwait(false);
             await RecoverUnderlyingProducer(connection, cancellationToken).ConfigureAwait(false);
             Log.ProducerRecovered(Logger);
         }
@@ -70,11 +72,12 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
         public event Closed Closed;
         public event RecoveryRequested RecoveryRequested;
         
-        public Task TerminateAsync(Exception exception)
+        public async Task TerminateAsync(Exception exception)
         {
+            _closed = true;
             _failureCause = exception;
             _manualResetEvent.Set();
-            return Task.CompletedTask;
+            await DisposeUnderlyingProducerSafe().ConfigureAwait(false);
         }
 
         public async ValueTask DisposeAsync()
@@ -83,12 +86,32 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
             Closed?.Invoke(this);
         }
 
+        private async ValueTask DisposeUnderlyingProducerSafe()
+        {
+            try
+            {
+                await DisposeUnderlyingProducer().ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+        }
+
         protected void CheckClosed()
         {
-            if (_failureCause != null)
+            if (_closed)
             {
-                throw new ProducerClosedException("Producer was closed due to an unrecoverable error.", _failureCause);
+                if (_failureCause != null)
+                {
+                    throw new ProducerClosedException(_failureCause);
+                }
+                else
+                {
+                    throw new ProducerClosedException();
+                }
             }
+
         }
 
         protected abstract ValueTask DisposeUnderlyingProducer();

@@ -13,6 +13,7 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
         private readonly ILogger<AutoRecoveringConsumer> _logger;
         private readonly ConsumerConfiguration _configuration;
         private readonly AsyncManualResetEvent _manualResetEvent = new AsyncManualResetEvent(true);
+        private bool _closed;
         private Exception _failureCause;
         private IConsumer _consumer;
 
@@ -26,18 +27,18 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
         {
             while (true)
             {
-                CheckClosed();
-                
+                CheckState();
+
                 try
                 {
                     return await _consumer.ReceiveAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (ConsumerClosedException)
                 {
-                    CheckClosed();
-                    
+                    CheckState();
+
                     Log.RetryingReceiveAsync(_logger);
-                    
+
                     Suspend();
                     RecoveryRequested?.Invoke();
                     await _manualResetEvent.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -47,14 +48,33 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
 
         public ValueTask AcceptAsync(Message message, Transaction transaction, CancellationToken cancellationToken = default)
         {
+            CheckState();
+
             return _consumer.AcceptAsync(message, transaction, cancellationToken);
         }
 
         public void Reject(Message message, bool undeliverableHere)
         {
+            CheckState();
+
             _consumer.Reject(message, undeliverableHere);
         }
-        
+
+        private void CheckState()
+        {
+            if (_closed)
+            {
+                if (_failureCause != null)
+                {
+                    throw new ConsumerClosedException("The Consumer was closed due to an unrecoverable error.", _failureCause);
+                }
+                else
+                {
+                    throw new ConsumerClosedException();
+                }
+            }
+        }
+
         public void Suspend()
         {
             var wasSuspended = IsSuspended();
@@ -62,7 +82,7 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
 
             if (!wasSuspended)
             {
-                Log.ConsumerSuspended(_logger);    
+                Log.ConsumerSuspended(_logger);
             }
         }
 
@@ -84,46 +104,43 @@ namespace ActiveMQ.Artemis.Client.AutoRecovering
 
         public async Task RecoverAsync(IConnection connection, CancellationToken cancellationToken)
         {
-            await DisposeUnderlyingConsumer().ConfigureAwait(false);
+            await DisposeUnderlyingConsumerSafe().ConfigureAwait(false);
             _consumer = await connection.CreateConsumerAsync(_configuration, cancellationToken).ConfigureAwait(false);
             Log.ProducerRecovered(_logger);
         }
 
         public async Task TerminateAsync(Exception exception)
         {
+            _closed = true;
             _failureCause = exception;
             _manualResetEvent.Set();
-            
-            await DisposeUnderlyingConsumer().ConfigureAwait(false);
+            await DisposeUnderlyingConsumerSafe().ConfigureAwait(false);
         }
 
-        private async Task DisposeUnderlyingConsumer()
+        private async Task DisposeUnderlyingConsumerSafe()
         {
-            if (_consumer != null)
+            try
             {
-                try
-                {
-                    await _consumer.DisposeAsync().ConfigureAwait(false);
-                }
-                catch (Exception)
-                {
-                    // ignored
-                }
+                await DisposeUnderlyingConsumer().ConfigureAwait(false);
             }
-        }
-
-        private void CheckClosed()
-        {
-            if (_failureCause != null)
+            catch (Exception)
             {
-                throw new ConsumerClosedException("The Consumer was closed due to an unrecoverable error.", _failureCause);
+                // ignored
             }
         }
 
         public async ValueTask DisposeAsync()
         {
-            await _consumer.DisposeAsync().ConfigureAwait(false);
+            await DisposeUnderlyingConsumer().ConfigureAwait(false);
             Closed?.Invoke(this);
+        }
+        
+        private async ValueTask DisposeUnderlyingConsumer()
+        {
+            if (_consumer != null)
+            {
+                await _consumer.DisposeAsync().ConfigureAwait(false);
+            }
         }
 
         public event Closed Closed;

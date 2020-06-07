@@ -1,7 +1,5 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
-using ActiveMQ.Artemis.Client.Exceptions;
 using ActiveMQ.Artemis.Client.UnitTests.Utils;
 using Amqp.Handler;
 using Xunit;
