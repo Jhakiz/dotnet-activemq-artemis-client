@@ -80,7 +80,7 @@ namespace ActiveMQ.Artemis.Client.UnitTests
 
 
         [Fact]
-        public async Task Throws_on_attempt_to_accept_message_when_when_connection_disconnected()
+        public async Task Throws_on_attempt_to_accept_message_when_connection_disconnected()
         {
             using var host = CreateOpenedContainerHost();
             var messageSource = host.CreateMessageSource("a1");
@@ -135,7 +135,7 @@ namespace ActiveMQ.Artemis.Client.UnitTests
 
 
         [Fact]
-        public async Task Throws_on_attempt_to_reject_message_when_when_connection_disconnected()
+        public async Task Throws_on_attempt_to_reject_message_when_connection_disconnected()
         {
             using var host = CreateOpenedContainerHost();
             var messageSource = host.CreateMessageSource("a1");
